@@ -1,0 +1,1 @@
+arm-linux-androideabi/bin/ld: error: symbol av_gettime has undefined version LIBAVFORMAT_54
