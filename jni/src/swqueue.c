@@ -1,4 +1,5 @@
 #include "swqueue.h"
+#include "swlog.h"
 
 bool quit = false;
 
@@ -16,6 +17,8 @@ void *InitRawQueue()
 	prawqueue->rear = NULL;
 	prawqueue->size = 0;
 	quit = false;
+	pthread_mutex_init(&prawqueue->mutex,NULL);
+	pthread_cond_init(&prawqueue->cond,NULL);
 	return prawqueue;
 }
 
@@ -37,6 +40,8 @@ bool ReleaseRawQueue(void *rawqueue)
   		}
   		
 	pthread_mutex_unlock(&prawqueue->mutex);
+	pthread_mutex_destroy(&prawqueue->mutex);
+	pthread_cond_destroy(&prawqueue->cond);
 	free(prawqueue);
 	
 	}
@@ -47,24 +52,24 @@ bool ReleaseRawQueue(void *rawqueue)
 bool RawQueueEmpty(void *rawqueue)
 {	
 	SWRawQueue *prawqueue = (SWRawQueue *)rawqueue;
-	
+	pthread_mutex_lock(&prawqueue->mutex);
 	if (prawqueue && prawqueue->size != 0)
 	{
 		return false;
 	}
-	
+	pthread_mutex_lock(&prawqueue->mutex);
 	return true;
 }
 
-bool RawQueuePut(void *rawqueue, void *buffer, int len, short stream_index, long time)
+bool RawQueuePut(void *rawqueue, void *buffer, int len, long time, int stream_index)
 {
 	SWRawQueue *prawqueue = (SWRawQueue *)rawqueue;
-	
 	if (!prawqueue)
 	{
 		return false;
 	}
 	SWNode *pnode = NULL;
+
 	if (len == -1)
 	{
 		pnode = (SWNode *)malloc(sizeof(SWNode));
@@ -92,6 +97,7 @@ bool RawQueuePut(void *rawqueue, void *buffer, int len, short stream_index, long
 
 		memset(pnode,0,sizeof(SWNode)+len);		
 		pnode->time = time;
+		pnode->size = len;
 		pnode->stream_index = stream_index;			
 		memcpy(pnode->data, buffer, len);
 		pnode->next = NULL;
@@ -111,6 +117,7 @@ bool RawQueuePut(void *rawqueue, void *buffer, int len, short stream_index, long
 	}
 		
 	prawqueue->size++;
+	//pthread_cond_signal(&prawqueue->cond);
 	pthread_mutex_unlock(&prawqueue->mutex);
 	return true;
 

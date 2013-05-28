@@ -7,17 +7,19 @@
 #include	<string.h>
 #include    <pthread.h>
 #include    <stdbool.h>
-
+#include    "swpacket.h"
+#include	"libavcodec/avcodec.h"
 typedef struct _SWPacket
 {
-	short stream_index;
-	int pts;
-	int dts;
-	bool key;
-    int size;
-    struct _SWPacket *next;
-    char data[0];
-    
+	struct _SWPacket *next;
+	int size;
+	int stream_index;
+	int64_t pts;
+	int64_t dts;
+	int flags;
+	int datasize;
+	char data[0];
+
 }__attribute__((packed)) SWPacket;
 
 typedef struct _SWPacketQueue
@@ -33,7 +35,7 @@ typedef struct _SWPacketQueue
 void *InitPacketQueue();
 bool ReleasePacketQueue(void *packetqueue);
 bool PacketQueueEmpty(void *packetqueue);
-bool PacketQueuePut(void *packetqueue, void *data,int len, bool key, short stream_index, int pts, int dts);
+bool PacketQueuePut(void *packetqueue, const AVPacket *packet,bool flag);
 void *PacketQueueGet(void *packetqueue);
 
 #endif /* _SWPACKET_H */

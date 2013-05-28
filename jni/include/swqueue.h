@@ -11,7 +11,8 @@
 typedef struct _SWNode
 {
 	long time;    
-    short stream_index;   
+    short stream_index;
+    int size;
     struct _SWNode *next;
     char data[0];
     
@@ -30,7 +31,7 @@ typedef struct _SWRawQueue
 void *InitRawQueue();
 bool ReleaseRawQueue(void *rawqueue);
 bool RawQueueEmpty(void *rawqueue);
-bool RawQueuePut(void *rawqueue, void *buffer, int len, short stream_index, long time);
+bool RawQueuePut(void *rawqueue, void *buffer, int len, long time, int stream_index);
 void *RawQueueGet(void *rawqueue);
 
 #endif /* _SWQUEUE_H */

@@ -1,11 +1,11 @@
 #include "swpacket.h"
-
+#include "swlog.h"
 
 void *InitPacketQueue()
 {
 	SWPacketQueue *ppacketqueue = NULL;
 	ppacketqueue = (SWPacketQueue *)malloc(sizeof(SWPacketQueue));
-	
+
 	if (ppacketqueue == NULL)
 	{
 		return NULL;
@@ -14,7 +14,8 @@ void *InitPacketQueue()
 	ppacketqueue->front = NULL;
 	ppacketqueue->rear = NULL;
 	ppacketqueue->size = 0;
-
+	pthread_mutex_init(&ppacketqueue->mutex,NULL);
+	pthread_cond_init(&ppacketqueue->cond,NULL);
 	return ppacketqueue;
 }
 
@@ -26,7 +27,7 @@ bool ReleasePacketQueue(void *packetqueue)
 	{	
 		pthread_mutex_lock(&ppacketqueue->mutex);
 		
-		while (ppacketqueue->front) 			
+		while (ppacketqueue->front)
 		{
 			ppacketqueue->rear = ppacketqueue->front->next;
 			free(ppacketqueue->front);
@@ -34,8 +35,11 @@ bool ReleasePacketQueue(void *packetqueue)
 			ppacketqueue->front = ppacketqueue->rear;
   		}
   		
-	pthread_mutex_unlock(&ppacketqueue->mutex);
-	free(ppacketqueue);
+		pthread_mutex_unlock(&ppacketqueue->mutex);
+		pthread_mutex_destroy(&ppacketqueue->mutex);
+		pthread_cond_destroy(&ppacketqueue->cond);
+
+		free(ppacketqueue);
 	
 	}
 	
@@ -45,26 +49,25 @@ bool ReleasePacketQueue(void *packetqueue)
 bool PacketQueueEmpty(void *packetqueue)
 {
 	SWPacketQueue *ppacketqueue = (SWPacketQueue *)packetqueue;
-	
+	pthread_mutex_lock(&ppacketqueue->mutex);
 	if (ppacketqueue && ppacketqueue->size != 0)
 	{
 		return false;
 	}
-	
+	pthread_mutex_unlock(&ppacketqueue->mutex);
 	return true;
 }
 
-bool PacketQueuePut(void *packetqueue, void *data,int len,bool key,short stream_index, int pts, int dts)
+bool PacketQueuePut(void *packetqueue, const AVPacket *packet, bool flag)
 {
 	SWPacketQueue *ppacketqueue = (SWPacketQueue *)packetqueue;
-	bool flag = false;
 		
 	if (!ppacketqueue)
 	{
 		return false;
 	}
 	SWPacket *ppacket = NULL;
-	if (len == -1)
+	if (flag)
 	{
 		ppacket = (SWPacket *)malloc(sizeof(SWPacket));
 		if (!ppacket)
@@ -72,28 +75,27 @@ bool PacketQueuePut(void *packetqueue, void *data,int len,bool key,short stream_
 			return false;
 		}
 		memset(ppacket,0,sizeof(SWPacket));
-		ppacket->size = -1;
+		ppacket->size = sizeof(SWPacket) - 8;
+		ppacket->stream_index = -1;
 		ppacket->next = NULL;
+		ppacket->datasize = 0;
 	}
 	else
 	{
-		if (!data || len <= 0)
-		{
-			return false;
-		}
-		ppacket = (SWPacket *)malloc(sizeof(SWPacket)+len);
+		ppacket = (SWPacket *)malloc(sizeof(SWPacket)+packet->size);
 		
 		if (!ppacket)
 		{
 			return false;
 		}
-		memset(ppacket,0,sizeof(SWPacket)+len);
-		memcpy(ppacket->data,data,len);
-		ppacket->size = sizeof(SWPacket)+len;
-		ppacket->stream_index = stream_index;
-		ppacket->key = key;
-		ppacket->pts = pts;
-		ppacket->dts = dts;
+		memset(ppacket,0,sizeof(SWPacket)+packet->size);
+		memcpy(ppacket->data,packet->data, packet->size);
+		ppacket->size = sizeof(SWPacket)+packet->size - 8;
+		ppacket->stream_index = packet->stream_index;
+		ppacket->flags = packet->flags;
+		ppacket->pts = packet->pts;
+		ppacket->dts = packet->dts;
+		ppacket->datasize = packet->size;
 		ppacket->next = NULL;
 	}
 	pthread_mutex_lock(&ppacketqueue->mutex);
@@ -106,11 +108,12 @@ bool PacketQueuePut(void *packetqueue, void *data,int len,bool key,short stream_
 	else
 	{
 		ppacketqueue->rear->next = ppacket;
-		ppacketqueue->rear = ppacket;		
+		ppacketqueue->rear = ppacket;
 	}
 		
 	ppacketqueue->size++;
 	pthread_mutex_unlock(&ppacketqueue->mutex);
+	LOGD("packet size %d",ppacketqueue->size);
 	return true;
 	
 }

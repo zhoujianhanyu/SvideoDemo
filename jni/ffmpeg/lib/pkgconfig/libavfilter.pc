@@ -1,0 +1,14 @@
+prefix=/home/zhoujian/mylibs/android/ffmpeg_h_a
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libavfilter
+Description: FFmpeg video filtering library
+Version: 3.17.100
+Requires: libpostproc = 52.0.100, libswresample = 0.15.100, libswscale = 2.1.101, libavformat = 54.29.104, libavcodec = 54.59.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir} -lavfilter -lx264 -lfaac -lm -lz
+Libs.private: 
+Cflags: -I${includedir}

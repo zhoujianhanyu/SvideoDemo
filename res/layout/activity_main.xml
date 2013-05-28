@@ -3,11 +3,11 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent">
 
-   <com.sunwave.SWSurfaceView
-       
+   <com.sunwave.SWVideoRecorder    
        android:id="@+id/swsurfaceview"
        android:layout_width="fill_parent"
-       android:layout_height="fill_parent">     
-   </com.sunwave.SWSurfaceView>
+       android:layout_height="fill_parent">   
+           
+   </com.sunwave.SWVideoRecorder>
 
 </RelativeLayout>

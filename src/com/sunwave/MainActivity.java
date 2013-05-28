@@ -4,82 +4,64 @@ import com.sunwave.jni.SWNativeEnCode;
 
 import android.os.Bundle;
 import android.app.Activity;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.widget.TextView;
 
 public class MainActivity extends Activity {
-	
+
+	private static final String TAG = "MainActivity";
+
 	private SWNativeEnCode mNativeEnCode = null;
-	private SWSurfaceView mSurfaceView = null;
-	private MyThread1 mThread1 = null;
-	private MyThread2 mThread2 = null;
+	private SWVideoRecorder mVideoRecorder = null;
+	private SWPacketList mPacketList = null;
+	// private SWSocketUDP mSocketUDP = null;
+	private SWAudioRecorder mAudioRecorder = null;
+	private SWSocketTCP mSocketTCP = null;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		
+		mPacketList = new SWPacketList();
 		mNativeEnCode = new SWNativeEnCode();
-		mSurfaceView = (SWSurfaceView) findViewById(R.id.swsurfaceview);
-		
-		mThread1 = new MyThread1();
-		mThread2 = new MyThread2();
-		//mNativeEnCode.nativeInitEncode();
-		byte buff[] = mNativeEnCode.nativeGetVideoBuffer();
-		for (int i=0;i<buff.length;i++)
-		{
-			Log.i("aaaaa",""+buff[i]);
-		}
-		
-		Log.i("aaaaa",""+buff.toString());
-		//mThread1.start();
-		//mThread2.start();
-	}
-	
-	
-	private class MyThread1 extends Thread{
+		mNativeEnCode.nativeInitEncode(800, 480, mPacketList);
 
-		@Override
-		public void run() {
-			int num = 1;
-			int d = 0;
-			while(num++ <= 100) {
-				
-				d = num+5;
-				Log.d("aaaaa", ""+d);
-				mNativeEnCode.nativeSetRawBuffer(null, 0, d);
-				try {
-					sleep(100);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-			
-		}
+		mVideoRecorder = (SWVideoRecorder) findViewById(R.id.swsurfaceview);
+		mVideoRecorder.setmNativeEnCode(mNativeEnCode);
 		
+		mSocketTCP = new SWSocketTCP(mPacketList);
+		startEnCode();
 		
+		mAudioRecorder = new SWAudioRecorder(mNativeEnCode);
+		//Thread thread = new Thread(mAudioRecorder);
+		//thread.start();
+		//mNativeEnCode.nativeStartEncode();
+		//mVideoRecorder.setFlag(true);
+		//mAudioRecorder.setRecording(true);
 	}
-	
-	private class MyThread2 extends Thread{
 
-		@Override
-		public void run() {
-			int num = 0;
-			while(num++ <= 100) {
-				Log.d("bbbbb", ""+mNativeEnCode.nativeGetVideoBuffer());
-				try {
-					sleep(200);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
+
+	private boolean startEnCode() {
+		if (!mSocketTCP.openTCP()) {
+			return false;
 		}
+		new Thread(mSocketTCP).start();
+		mSocketTCP.setSending(true);
 		
-		
+		mNativeEnCode.nativeStartEncode();
+		mVideoRecorder.setFlag(true);
+		return true;
 	}
-	
+
+	private void stopEnCode() {
+
+		mVideoRecorder.setFlag(false);
+		mNativeEnCode.nativeStopEncode();
+		mNativeEnCode.nativeReleaseEncode();
+	}
+
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
@@ -88,6 +70,22 @@ public class MainActivity extends Activity {
 			mNativeEnCode.nativeReleaseEncode();
 			mNativeEnCode = null;
 		}
+		if (mPacketList != null) {
+			mPacketList.clearPacket();
+			mPacketList = null;
+		}
+		if (mVideoRecorder != null) {
+			mVideoRecorder.closeCamera();
+			mVideoRecorder = null;
+		}
+		/*
+		 * if (mSocketUDP != null) { mSocketUDP.closeSocket(); mSocketUDP =
+		 * null; }
+		 */
+		if (mSocketTCP != null) {
+			mSocketTCP.closeTCP();
+			mSocketTCP = null;
+		}
 	}
-	
+
 }

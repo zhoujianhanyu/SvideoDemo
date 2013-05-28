@@ -4,32 +4,29 @@
 
 #include	<stdlib.h>
 #include	<stdio.h>
+#include    <string.h>
+#include    <jni.h>
+#include 	<assert.h>
+
 #include	"libavformat/avformat.h"
 #include	"libavcodec/avcodec.h"
 #include	"libswscale/swscale.h"
 #include    <pthread.h>
 #include    <stdbool.h>
 
-typedef struct _test
-{
-	int kk;
-	int size;
-	char bb[0];
-}__attribute__((packed)) Test;
-
 typedef struct _SWEnContext
 {	
 
 	AVCodecContext *pVCodecCtx;
 	AVCodecContext *pACodecCtx;
-
 	AVFrame *pFrame;
 	pthread_t thread;
 	struct SwsContext *pSwsCtx;
 	
 }SWEnContext;
 
-void *InitEnContext(void *queue, void *packetlink);
+void *InitEnContext(int width, int height, void *queue, JavaVM *jvm, jobject obj);
+//void *InitEnContext(int width, int height, void *queue, void *packetqueue);
 
 void *EnContextThread(void *encontext);
 
